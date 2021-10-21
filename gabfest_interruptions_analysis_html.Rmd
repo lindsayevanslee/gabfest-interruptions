@@ -1,0 +1,203 @@
+---
+title: "Gabfest interruptions"
+author: "Lindsay Lee"
+date: "2021-10-01"
+output: html_document
+---
+
+```{r chunk_options, echo=FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+                      message = FALSE,
+                      warning = FALSE)
+```
+
+```{r prep}
+library(tidyverse)
+
+load("gabfest_interruptions.RData")
+
+#read in all data, filtering out start/stop and ad breaks, converting all non-emily, david, john to "guest"
+df_all_data <- ls()[str_detect(ls(), "^ep.")] %>% 
+  map_dfr(.f = function(obj) {
+    x <- obj %>% 
+    rlang::parse_expr() %>% 
+      eval() 
+    
+    x %>% 
+      filter(! Interrupter %in% c("start", "stop", "ad", "unad")) %>% 
+      mutate(Time = as.numeric(Time),
+             Interruptee = case_when(
+               Interruptee == "e" ~ "Emily",
+               Interruptee == "d" ~ "David",
+               Interruptee == "j" ~ "John",
+               TRUE ~ "guest"
+               ),
+             Interrupter = case_when(
+               Interrupter == "e" ~ "Emily",
+               Interrupter == "d" ~ "David",
+               Interrupter == "j" ~ "John",
+               TRUE ~ "guest"
+             ),
+             ep = lubridate::ymd(str_remove_all(obj, "ep."))) %>% 
+      mutate(Interruptee = ordered(Interruptee, levels = c("Emily", "David", "John", "guest")),
+             Interrupter = ordered(Interrupter, levels = c("Emily", "David", "John", "guest"))) %>% 
+      as_tibble()
+  
+    }) 
+
+
+
+```
+
+
+Analysis on `r length(unique(df_all_data$ep))` episodes from `r range(df_all_data$ep)[1]` to `r range(df_all_data$ep)[2]`.
+
+Definition of an "interruption": 
+
+* one person talks over another with the purpose of making their own point
+* may or may not cause the other person to stop talking
+* excludes exclamations or conversational modes of emphasis (eg "right," "yeah," "that's interesting")
+
+
+# Ignoring guest interruptions
+
+```{r output_noguests}
+
+
+# #how many episodes did I do this for? 
+# length(unique(df_all_data$ep))
+# 
+# #what is the range of dates?
+# range(df_all_data$ep)
+
+
+cat("\n\n")
+
+
+### just among e/d/j -------------------
+
+#who has most interruptions?
+df_all_data %>% 
+  filter(Interrupter %in% c("Emily", "David", "John"),
+         Interruptee %in% c("Emily", "David", "John")) %>%
+  group_by(Interrupter) %>% 
+  summarize(n = n()) %>% 
+  mutate(pct = n/sum(n)) %>% 
+  ggplot(aes(x = Interrupter, 
+             y = pct, 
+             label = paste0(scales::percent(pct, accuracy = 1), " (n=",n,")" ))
+         ) +
+  geom_col() +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1), expand = expansion(mult = c(0.05, 0.1))) +
+  geom_text(vjust = -1) + 
+  labs(y = "%",
+       title = "Fig 1. Percent of total interruptions, ignoring guests")
+
+cat("\n\n")
+
+#who is each person interupting the most? 
+df_all_data %>% 
+  filter(Interrupter %in% c("Emily", "David", "John"),
+         Interruptee %in% c("Emily", "David", "John")) %>%
+  group_by(Interrupter, Interruptee) %>% 
+  summarize(n = n()) %>% 
+  mutate(pct = n/sum(n)) %>% 
+  ggplot(aes(x = Interruptee, 
+             y = pct, 
+             label = paste0(scales::percent(pct, accuracy = 1), " (n=",n,")" ))
+  ) +
+  geom_col() +
+  facet_wrap(~ Interrupter, drop = TRUE) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1), expand = expansion(mult = c(0.05, 0.15))) +
+  geom_text(vjust = -1, size = 3) + 
+  labs(y = "%",
+       title = "Fig 2. Frequency of interruptions per interruptee for each interrupter, \nignoring guests")
+
+cat("\n\n")
+
+#who has highest interruption rate? (interruptions/episode)
+df_all_data %>% 
+  filter(Interrupter %in% c("Emily", "David", "John"),
+         Interruptee %in% c("Emily", "David", "John")) %>%
+  group_by(Interrupter, ep) %>% 
+  summarize(n = n()) %>% 
+  summarize(n_eps = n(),
+            avg_ints_per_ep = mean(n)) %>% 
+  ggplot(aes(x = Interrupter, 
+             y = avg_ints_per_ep, 
+             label = paste0(round(avg_ints_per_ep, 1), " (", n_eps," eps)" ))
+  ) +
+  geom_col() +
+  geom_text(vjust = -1) + 
+  scale_y_continuous(expand = expansion(mult = c(0.05, 0.1))) +
+  labs(y = "Avg interruptions per ep",
+       title = "Fig 3. Average interruptions per episode, ignoring guests")
+
+cat("\n\n")
+
+
+```
+
+# Including guest interruptions
+
+```{r output_guests}
+
+cat("\n\n")
+
+### include guests -------------------
+
+#who has most interruptions?
+df_all_data %>% 
+  group_by(Interrupter) %>% 
+  summarize(n = n()) %>% 
+  mutate(pct = n/sum(n)) %>% 
+  mutate(pct = n/sum(n)) %>% 
+  ggplot(aes(x = Interrupter, 
+             y = pct, 
+             label = paste0(scales::percent(pct, accuracy = 1), " (n=",n,")" ))
+  ) +
+  geom_col() +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1), expand = expansion(mult = c(0.05, 0.1))) +
+  geom_text(vjust = -1) + 
+  labs(y = "%",
+       title = "Fig 4. Percent of total interruptions, including guests")
+
+cat("\n\n")
+
+#who is each person interupting the most? 
+df_all_data %>% 
+  group_by(Interrupter, Interruptee) %>% 
+  summarize(n = n()) %>% 
+  mutate(pct = n/sum(n)) %>% 
+  ggplot(aes(x = Interruptee, 
+             y = pct, 
+             label = paste0(scales::percent(pct, accuracy = 1), " (n=",n,")" ))
+  ) +
+  geom_col() +
+  facet_wrap(~ Interrupter, drop = TRUE) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1), expand = expansion(mult = c(0.05, 0.15))) +
+  geom_text(vjust = -1, size = 3) + 
+  labs(y = "%",
+       title = "Fig 5. Frequency of interruptions per interruptee for each interrupter, \nincluding guests")
+
+cat("\n\n")
+
+#who has highest interruption rate? (interruptions/episode)
+df_all_data %>% 
+  group_by(Interrupter, ep) %>% 
+  summarize(n = n()) %>% 
+  summarize(n_eps = n(),
+            avg_ints_per_ep = mean(n)) %>% 
+  ggplot(aes(x = Interrupter, 
+             y = avg_ints_per_ep, 
+             label = paste0(round(avg_ints_per_ep, 1), " (", n_eps," eps)" ))
+  ) +
+  geom_col() +
+  geom_text(vjust = -1) + 
+  scale_y_continuous(expand = expansion(mult = c(0.05, 0.1))) +
+  labs(y = "Avg interruptions per ep",
+       title = "Fig 6. Average interruptions per episode, including guests")
+
+cat("\n\n")
+```
+
