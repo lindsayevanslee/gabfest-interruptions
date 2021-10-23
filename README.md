@@ -12,6 +12,7 @@ Analysis covered 55 episodes of the podcast from June 17, 2016 to June 8, 2017
 * `gabfest_interruptions.RData` - the data from each episode
 * `gabfest_interruptions_analysis.Rmd` - Rmarkdown file that generated the brief report that I sent in to the Gabfest crew
 * `gabfest_interruptions_analysis.pdf` - copy of the report I sent to the Gabfest crew
+* [`gabfest_interruptions_analysis.md`](gabfest_interruptions_analysis.md) - same report, viewable here as a webpage
 * `gabfest_interruptions_analysis_html.Rmd` - Same report but set to output an html doc
 * `gabfest_interruptions_analysis_html.html` - copy of the report I sent to the Gabfest crew but as an html
 
